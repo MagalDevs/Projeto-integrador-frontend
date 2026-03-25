@@ -12,6 +12,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ProjetoIntegrador">
         <activity
+            android:name=".DenunciasActivity"
+            android:exported="false" />
+        <activity
+            android:name=".NovaDenunciaActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
