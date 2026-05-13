@@ -2,4 +2,19 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="primary">#1A3A5C</color>       <!-- Deep navy blue -->
+    <color name="primary_dark">#0F2440</color>
+    <color name="accent">#F5A623</color>         <!-- Amber / warning orange -->
+    <color name="background">#F0F4F8</color>     <!-- Light blue-grey -->
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#1A3A5C</color>
+    <color name="text_secondary">#607D9B</color>
+
+    <!-- Material defaults (keep these for theme compat) -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
 </resources>
