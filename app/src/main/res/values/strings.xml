@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">Projeto-Integrador</string>
+    <string-array name="tipos_denuncia">
+        <item>Buraco na rua</item>
+        <item>Iluminação pública</item>
+        <item>Lixo acumulado</item>
+        <item>Enchente</item>
+        <item>Vazamento de água</item>
+        <item>Esgoto a céu aberto</item>
+        <item>Semáforo quebrado</item>
+        <item>Árvore caída</item>
+        <item>Calçada danificada</item>
+        <item>Poluição</item>
+        <item>Animal abandonado</item>
+        <item>Terreno abandonado</item>
+        <item>Queimada</item>
+        <item>Fiação exposta</item>
+        <item>Outro</item>
+    </string-array>
 </resources>
