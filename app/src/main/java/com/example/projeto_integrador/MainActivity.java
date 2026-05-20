@@ -26,6 +26,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Marker marker;
 
+    private MaterialButton buttonMinhasDenuncias;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -109,6 +111,18 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(
                     MainActivity.this,
                     NovaDenunciaActivity.class
+            );
+
+            startActivity(intent);
+        });
+
+        buttonMinhasDenuncias = findViewById(R.id.buttonMinhasDenuncias);
+
+        buttonMinhasDenuncias.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    DenunciasActivity.class
             );
 
             startActivity(intent);

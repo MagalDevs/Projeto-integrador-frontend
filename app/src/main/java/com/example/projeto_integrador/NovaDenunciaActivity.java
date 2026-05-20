@@ -3,6 +3,8 @@ package com.example.projeto_integrador;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -40,6 +42,9 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.MapEventsOverlay;
 import org.osmdroid.views.overlay.Marker;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class NovaDenunciaActivity extends AppCompatActivity {
@@ -250,7 +255,9 @@ public class NovaDenunciaActivity extends AppCompatActivity {
                 double lng = location.getLongitude();
                 GeoPoint ponto = new GeoPoint(lat, lng);
 
-                localizacao.setText("📍 Lat: " + lat + "\nLng: " + lng);
+                String endereco = obterEndereco(lat, lng);
+
+                localizacao.setText("📍 " + endereco);
 
                 mapPreviewCard.setVisibility(View.VISIBLE);
                 mapPreview.getController().setCenter(ponto);
@@ -297,8 +304,12 @@ public class NovaDenunciaActivity extends AppCompatActivity {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
                 marker.setPosition(p);
-                localizacao.setText("📍 Lat: " + p.getLatitude()
-                        + "\nLng: " + p.getLongitude());
+                String endereco = obterEndereco(
+                        p.getLatitude(),
+                        p.getLongitude()
+                );
+
+                localizacao.setText("📍 " + endereco);
 
                 mapPreviewCard.setVisibility(View.VISIBLE);
                 mapPreview.getController().setCenter(p);
@@ -329,5 +340,60 @@ public class NovaDenunciaActivity extends AppCompatActivity {
     public boolean onSupportNavigateUp() {
         finish();
         return true;
+    }
+
+    private String obterEndereco(double latitude, double longitude) {
+
+        try {
+
+            Geocoder geocoder = new Geocoder(
+                    this,
+                    Locale.getDefault()
+            );
+
+            List<Address> enderecos =
+                    geocoder.getFromLocation(latitude, longitude, 1);
+
+            if (enderecos != null && !enderecos.isEmpty()) {
+
+                Address endereco = enderecos.get(0);
+
+                String rua = endereco.getThoroughfare();
+                String numero = endereco.getSubThoroughfare();
+                String cidade = endereco.getSubAdminArea();
+                String estado = endereco.getAdminArea();
+
+                StringBuilder resultado = new StringBuilder();
+
+                if (rua != null) {
+                    resultado.append(rua);
+
+                    if (numero != null) {
+                        resultado.append(", ").append(numero);
+                    }
+                }
+
+                if (cidade != null) {
+
+                    if (resultado.length() > 0) {
+                        resultado.append(" - ");
+                    }
+
+                    resultado.append(cidade);
+                }
+
+                if (estado != null) {
+                    resultado.append("/").append(estado);
+                }
+
+                return resultado.toString();
+            }
+
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+
+        return "Localização não encontrada";
     }
 }
