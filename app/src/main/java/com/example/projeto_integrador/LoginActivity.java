@@ -2,8 +2,7 @@ package com.example.projeto_integrador;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,14 +10,17 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-public class InicioActivity extends AppCompatActivity {
+public class LoginActivity extends AppCompatActivity {
+
+    private TextView textCadastro;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_inicio);
+
+        setContentView(R.layout.activity_login);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -33,16 +35,29 @@ public class InicioActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Delay da SplashScreen
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        iniciarComponentes();
 
-            Intent intent = new Intent(InicioActivity.this, LoginActivity.class);
+        configurarEventos();
+    }
+
+    private void iniciarComponentes() {
+
+        textCadastro = findViewById(R.id.textCadastro);
+
+    }
+
+    private void configurarEventos() {
+
+        textCadastro.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    LoginActivity.this,
+                    RegisterActivity.class
+            );
 
             startActivity(intent);
 
-            // Fecha a SplashScreen
-            finish();
+        });
 
-        }, 2500); // 2.5 segundos
     }
 }

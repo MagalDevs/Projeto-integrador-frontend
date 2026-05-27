@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Projeto-Integrador</string>
+    <string name="app_name">CidadãoAlerta</string>
     <string-array name="tipos_denuncia">
         <item>Buraco na rua</item>
         <item>Iluminação pública</item>

@@ -1,19 +1,138 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- SELF-CONTAINED: all colors are hardcoded hex — no extra resource files needed -->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#F0F4F8"
     tools:context=".InicioActivity">
 
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="249dp"
-        android:layout_height="479dp"
+    <!-- BACKGROUND DECORATION TOP -->
+    <View
+        android:id="@+id/topDecoration"
+        android:layout_width="320dp"
+        android:layout_height="320dp"
+        android:background="#1A3A5C"
+        android:alpha="0.08"
+        android:translationX="-120dp"
+        android:translationY="-120dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- BACKGROUND DECORATION BOTTOM -->
+    <View
+        android:id="@+id/bottomDecoration"
+        android:layout_width="260dp"
+        android:layout_height="260dp"
+        android:background="#F5A623"
+        android:alpha="0.08"
+        android:translationX="120dp"
+        android:translationY="120dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- MAIN CONTENT -->
+    <LinearLayout
+        android:id="@+id/contentContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/icon" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- LOGO CONTAINER -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="170dp"
+            android:layout_height="170dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="32dp"
+            app:cardElevation="10dp">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- SOFT INNER BG -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#EEF3F8" />
+
+                <!-- APP ICON -->
+                <ImageView
+                    android:id="@+id/imageView"
+                    android:layout_width="110dp"
+                    android:layout_height="110dp"
+                    android:layout_gravity="center"
+                    android:scaleType="fitCenter"
+                    app:srcCompat="@drawable/icon" />
+
+            </FrameLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- APP NAME -->
+        <TextView
+            android:id="@+id/textAppName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="CidadãoAlerta"
+            android:textColor="#1A3A5C"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- SUBTITLE -->
+        <TextView
+            android:id="@+id/textSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Conectando cidadãos à transformação urbana"
+            android:textAlignment="center"
+            android:textColor="#5B6B7A"
+            android:textSize="14sp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp" />
+
+        <!-- LOADING BADGE -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:background="#DCE6F2"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp">
+
+            <!-- STATUS DOT -->
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="#1A3A5C" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Inicializando sistema..."
+                android:textColor="#1A3A5C"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- VERSION -->
+
 </androidx.constraintlayout.widget.ConstraintLayout>
