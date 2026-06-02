@@ -17,4 +17,9 @@
         <item>Fiação exposta</item>
         <item>Outro</item>
     </string-array>
+    <string-array name="status_denuncia">
+        <item>EM ANÁLISE</item>
+        <item>EM ANDAMENTO</item>
+        <item>CONCLUÍDO</item>
+    </string-array>
 </resources>

@@ -54,6 +54,14 @@
             android:name=".MainActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".AdminDenunciasActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AdminDetalheDenunciaActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

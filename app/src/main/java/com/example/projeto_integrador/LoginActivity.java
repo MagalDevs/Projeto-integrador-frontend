@@ -13,6 +13,7 @@ import androidx.core.view.WindowInsetsCompat;
 public class LoginActivity extends AppCompatActivity {
 
     private TextView textCadastro;
+    private TextView textAcessoAdmin;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +45,8 @@ public class LoginActivity extends AppCompatActivity {
 
         textCadastro = findViewById(R.id.textCadastro);
 
+        textAcessoAdmin = findViewById(R.id.textAcessoAdmin);
+
     }
 
     private void configurarEventos() {
@@ -53,6 +56,18 @@ public class LoginActivity extends AppCompatActivity {
             Intent intent = new Intent(
                     LoginActivity.this,
                     RegisterActivity.class
+            );
+
+            startActivity(intent);
+
+        });
+
+        // Acesso temporário ao painel admin (sem autenticação)
+        textAcessoAdmin.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    LoginActivity.this,
+                    AdminDenunciasActivity.class
             );
 
             startActivity(intent);
