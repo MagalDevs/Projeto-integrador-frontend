@@ -8,14 +8,17 @@ import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.view.MotionEvent;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -34,7 +37,15 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.snackbar.Snackbar;
 
+import com.example.projeto_integrador.network.ApiClient;
+import com.example.projeto_integrador.network.ApiConfig;
+import com.example.projeto_integrador.session.SessionManager;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.util.GeoPoint;
@@ -42,24 +53,46 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.MapEventsOverlay;
 import org.osmdroid.views.overlay.Marker;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 public class NovaDenunciaActivity extends AppCompatActivity {
 
     // ── Views ────────────────────────────────────────────────────────────────
+    private EditText editTitulo;
+    private Spinner spinnerCategoria;
+    private EditText editDescricao;
     private ImageView imagePreview;
-    private LinearLayout imageHint;          // hint "toque para adicionar"
-    private MaterialButton buttonRemoverFoto; // botão ✕ sobreposto na foto
+    private LinearLayout imageHint;
+    private MaterialButton buttonRemoverFoto;
     private TextView localizacao;
     private MapView mapPreview;
     private MaterialCardView mapPreviewCard;
     private Marker previewMarker;
+    private MaterialButton buttonEnviar;
 
     // ── Estado ───────────────────────────────────────────────────────────────
     private boolean temFotoSelecionada = false;
+    private double latSelecionada = 0;
+    private double lngSelecionada = 0;
+    private boolean temLocalizacao = false;
+    private Uri fotoUri = null;
+    private Bitmap fotoBitmap = null;
+
+    // ── Categorias (id → nome) ───────────────────────────────────────────────
+    private final LinkedHashMap<String, String> categoriasMap = new LinkedHashMap<>();
+    private final List<String> categoriasNomes = new ArrayList<>();
+
+    // ── Session ──────────────────────────────────────────────────────────────
+    private SessionManager session;
 
     // ── Location ─────────────────────────────────────────────────────────────
     private FusedLocationProviderClient fusedLocationClient;
@@ -72,8 +105,9 @@ public class NovaDenunciaActivity extends AppCompatActivity {
                     result -> {
                         if (result.getResultCode() == RESULT_OK
                                 && result.getData() != null) {
-                            Uri uri = result.getData().getData();
-                            mostrarFoto(() -> imagePreview.setImageURI(uri));
+                            fotoUri = result.getData().getData();
+                            fotoBitmap = null;
+                            mostrarFoto(() -> imagePreview.setImageURI(fotoUri));
                         }
                     });
 
@@ -86,9 +120,10 @@ public class NovaDenunciaActivity extends AppCompatActivity {
                                 && result.getData().getExtras() != null) {
                             Object foto = result.getData().getExtras().get("data");
                             if (foto instanceof Bitmap) {
-                                Bitmap bitmap = (Bitmap) foto;
+                                fotoBitmap = (Bitmap) foto;
+                                fotoUri = null;
                                 mostrarFoto(() -> {
-                                    imagePreview.setImageBitmap(bitmap);
+                                    imagePreview.setImageBitmap(fotoBitmap);
                                     imagePreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
                                 });
                             }
@@ -103,13 +138,19 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_nova_denuncia);
 
+        session = new SessionManager(this);
+
         // ── Bind views ───────────────────────────────────────────────────────
+        editTitulo        = findViewById(R.id.tituloDenuncia);
+        spinnerCategoria  = findViewById(R.id.tipoDenuncia);
+        editDescricao     = findViewById(R.id.descricaoDenuncia);
         localizacao       = findViewById(R.id.localizacao);
         imagePreview      = findViewById(R.id.imagePreview);
         imageHint         = findViewById(R.id.imageHint);
         buttonRemoverFoto = findViewById(R.id.buttonRemoverFoto);
         mapPreview        = findViewById(R.id.mapPreview);
         mapPreviewCard    = findViewById(R.id.mapPreviewCard);
+        buttonEnviar      = findViewById(R.id.enviarDenuncia);
 
         MaterialButton buttonLocalAtual    = findViewById(R.id.buttonLocalAtual);
         MaterialButton buttonSelecionarMapa = findViewById(R.id.buttonSelecionarMapa);
@@ -137,8 +178,6 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         }
 
         // ── Mini-mapa preview (somente leitura) ───────────────────────────────
-        // Retornar `true` no OnTouchListener consome o evento antes que ele
-        // chegue ao ScrollView pai, impedindo que a tela role ao tocar no mapa.
         mapPreview.setOnTouchListener((v, event) -> true);
 
         GeoPoint indaiatuba = new GeoPoint(-23.0882, -47.2234);
@@ -153,13 +192,10 @@ public class NovaDenunciaActivity extends AppCompatActivity {
 
         // ── Foto: clique no container abre menu ───────────────────────────────
         findViewById(R.id.imageContainer).setOnClickListener(v -> {
-            // Só abre o menu se não houver foto; o botão ✕ cuida da remoção.
             if (!temFotoSelecionada) {
                 abrirMenuImagem();
             }
         });
-
-        // Clique direto na imagem também abre o menu (quando há foto, troca)
         imagePreview.setOnClickListener(v -> abrirMenuImagem());
 
         // ── Botão remover foto ────────────────────────────────────────────────
@@ -168,16 +204,186 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         // ── Localização ───────────────────────────────────────────────────────
         buttonLocalAtual.setOnClickListener(v -> pegarLocalizacaoAtual());
         buttonSelecionarMapa.setOnClickListener(v -> abrirModalMapa());
+
+        // ── Enviar denúncia ───────────────────────────────────────────────────
+        buttonEnviar.setOnClickListener(v -> enviarDenuncia());
+
+        // ── Carregar categorias da API ─────────────────────────────────────────
+        carregarCategorias();
+    }
+
+    // ─── Categorias ──────────────────────────────────────────────────────────
+
+    private void carregarCategorias() {
+        ApiClient.getInstance().get(
+                ApiConfig.CATEGORIAS,
+                response -> {
+                    try {
+                        JSONArray array = new JSONArray(response);
+
+                        categoriasMap.clear();
+                        categoriasNomes.clear();
+
+                        for (int i = 0; i < array.length(); i++) {
+                            JSONObject cat = array.getJSONObject(i);
+                            String id   = cat.getString("id");
+                            String nome = cat.getString("nome");
+                            categoriasMap.put(id, nome);
+                            categoriasNomes.add(nome);
+                        }
+
+                        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                                this,
+                                android.R.layout.simple_spinner_item,
+                                categoriasNomes
+                        );
+                        adapter.setDropDownViewResource(
+                                android.R.layout.simple_spinner_dropdown_item
+                        );
+                        spinnerCategoria.setAdapter(adapter);
+
+                    } catch (JSONException e) {
+                        Snackbar.make(
+                                findViewById(R.id.main),
+                                "Erro ao carregar categorias.",
+                                Snackbar.LENGTH_LONG
+                        ).show();
+                    }
+                },
+                (code, msg) -> {
+                    Snackbar.make(
+                            findViewById(R.id.main),
+                            "Não foi possível carregar as categorias. Verifique sua conexão.",
+                            Snackbar.LENGTH_LONG
+                    ).show();
+                }
+        );
+    }
+
+    // ─── Enviar Denúncia ─────────────────────────────────────────────────────
+
+    private void enviarDenuncia() {
+        String titulo    = editTitulo.getText().toString().trim();
+        String descricao = editDescricao.getText().toString().trim();
+
+        // Validações
+        if (TextUtils.isEmpty(titulo)) {
+            Snackbar.make(findViewById(R.id.main),
+                    "Informe o título da denúncia.", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+        if (TextUtils.isEmpty(descricao)) {
+            Snackbar.make(findViewById(R.id.main),
+                    "Informe a descrição da denúncia.", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+        if (!temLocalizacao) {
+            Snackbar.make(findViewById(R.id.main),
+                    "Selecione a localização da denúncia.", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+        if (categoriasMap.isEmpty()) {
+            Snackbar.make(findViewById(R.id.main),
+                    "Categorias ainda carregando. Tente novamente.", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Pegar categoriaId pelo índice selecionado
+        int selectedIndex = spinnerCategoria.getSelectedItemPosition();
+        String categoriaId = new ArrayList<>(categoriasMap.keySet()).get(selectedIndex);
+
+        // Montar campos do multipart
+        Map<String, String> textFields = new HashMap<>();
+        textFields.put("titulo", titulo);
+        textFields.put("descricao", descricao);
+        textFields.put("latitude", String.valueOf(latSelecionada));
+        textFields.put("longitude", String.valueOf(lngSelecionada));
+        textFields.put("usuarioId", session.getUserId());
+        textFields.put("categoriaId", categoriaId);
+
+        // Imagem (se houver)
+        Map<String, byte[]> fileFields = null;
+        Map<String, String> fileNames = null;
+
+        if (temFotoSelecionada) {
+            byte[] imageBytes = obterBytesImagem();
+            if (imageBytes != null) {
+                fileFields = new HashMap<>();
+                fileFields.put("imagens", imageBytes);
+                fileNames = new HashMap<>();
+                fileNames.put("imagens", "foto.jpg");
+            }
+        }
+
+        // Feedback visual
+        buttonEnviar.setEnabled(false);
+        buttonEnviar.setText("Enviando...");
+
+        ApiClient.getInstance().postMultipart(
+                ApiConfig.DENUNCIAS,
+                textFields,
+                fileFields,
+                fileNames,
+                response -> {
+                    Snackbar.make(
+                            findViewById(R.id.main),
+                            "✅ Denúncia enviada com sucesso!",
+                            Snackbar.LENGTH_SHORT
+                    ).show();
+
+                    // Volta para a tela anterior após breve delay
+                    findViewById(R.id.main).postDelayed(this::finish, 1200);
+                },
+                (code, msg) -> {
+                    buttonEnviar.setEnabled(true);
+                    buttonEnviar.setText("🚀 Enviar denúncia");
+
+                    String errorMsg;
+                    if (code == -1) {
+                        errorMsg = "Sem conexão com o servidor.";
+                    } else {
+                        errorMsg = "Erro ao enviar denúncia (código " + code + ").";
+                    }
+
+                    Snackbar.make(
+                            findViewById(R.id.main),
+                            "❌ " + errorMsg,
+                            Snackbar.LENGTH_LONG
+                    ).show();
+                }
+        );
+    }
+
+    /**
+     * Converte a imagem selecionada (URI ou Bitmap) em array de bytes.
+     */
+    private byte[] obterBytesImagem() {
+        try {
+            if (fotoUri != null) {
+                InputStream is = getContentResolver().openInputStream(fotoUri);
+                if (is != null) {
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    byte[] data = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = is.read(data)) != -1) {
+                        buffer.write(data, 0, bytesRead);
+                    }
+                    is.close();
+                    return buffer.toByteArray();
+                }
+            } else if (fotoBitmap != null) {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                fotoBitmap.compress(Bitmap.CompressFormat.JPEG, 85, bos);
+                return bos.toByteArray();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     // ─── Foto ────────────────────────────────────────────────────────────────
 
-    /**
-     * Aplica a imagem na ImageView e atualiza o estado de UI para
-     * "foto selecionada": sem padding, sem hint, botão ✕ visível.
-     *
-     * @param aplicarImagem lambda que seta a fonte da imagem
-     */
     private void mostrarFoto(Runnable aplicarImagem) {
         aplicarImagem.run();
 
@@ -190,9 +396,6 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         temFotoSelecionada = true;
     }
 
-    /**
-     * Remove a foto e restaura o estado inicial (ícone de câmera + hint).
-     */
     private void removerFoto() {
         imagePreview.setImageResource(android.R.drawable.ic_menu_camera);
         imagePreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -202,6 +405,8 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         imageHint.setVisibility(View.VISIBLE);
         buttonRemoverFoto.setVisibility(View.GONE);
         temFotoSelecionada = false;
+        fotoUri = null;
+        fotoBitmap = null;
     }
 
     private void abrirMenuImagem() {
@@ -251,11 +456,12 @@ public class NovaDenunciaActivity extends AppCompatActivity {
 
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
             if (location != null) {
-                double lat = location.getLatitude();
-                double lng = location.getLongitude();
-                GeoPoint ponto = new GeoPoint(lat, lng);
+                latSelecionada = location.getLatitude();
+                lngSelecionada = location.getLongitude();
+                temLocalizacao = true;
+                GeoPoint ponto = new GeoPoint(latSelecionada, lngSelecionada);
 
-                String endereco = obterEndereco(lat, lng);
+                String endereco = obterEndereco(latSelecionada, lngSelecionada);
 
                 localizacao.setText("📍 " + endereco);
 
@@ -304,6 +510,11 @@ public class NovaDenunciaActivity extends AppCompatActivity {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
                 marker.setPosition(p);
+
+                latSelecionada = p.getLatitude();
+                lngSelecionada = p.getLongitude();
+                temLocalizacao = true;
+
                 String endereco = obterEndereco(
                         p.getLatitude(),
                         p.getLongitude()

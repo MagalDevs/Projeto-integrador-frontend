@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageButton;
@@ -14,6 +15,13 @@ import android.widget.TextView;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.projeto_integrador.network.ApiClient;
+import com.example.projeto_integrador.network.ApiConfig;
+import com.example.projeto_integrador.session.SessionManager;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -26,17 +34,11 @@ import java.util.Locale;
 public class DenunciasActivity extends AppCompatActivity {
 
     private ImageButton buttonBack;
+    private LinearLayout containerDenuncias;
+    private TextView textLoading;
 
-    private LinearLayout buttonExpandir;
-    private LinearLayout layoutExpandido;
+    private SessionManager session;
 
-    private ImageView iconExpandir;
-
-    private boolean expandido = false;
-
-    private MapView mapMini;
-
-    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,104 +48,175 @@ public class DenunciasActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_denuncias);
 
-        // TEXTO ENDEREÇO
-        @SuppressLint({"MissingInflatedId", "LocalSuppress"}) TextView textEndereco = findViewById(R.id.textEndereco);
+        session = new SessionManager(this);
+
+        iniciarComponentes();
 
         // BOTÃO VOLTAR
-        buttonBack = findViewById(R.id.buttonBack);
-
         buttonBack.setOnClickListener(v -> finish());
-
-        // EXPANSÃO
-        buttonExpandir = findViewById(R.id.buttonExpandir);
-        layoutExpandido = findViewById(R.id.layoutExpandido);
-        iconExpandir = findViewById(R.id.iconExpandir);
-
-        buttonExpandir.setOnClickListener(v -> {
-
-            expandido = !expandido;
-
-            if (expandido) {
-
-                layoutExpandido.setVisibility(View.VISIBLE);
-
-                iconExpandir.setRotation(180);
-
-            } else {
-
-                layoutExpandido.setVisibility(View.GONE);
-
-                iconExpandir.setRotation(0);
-            }
-        });
-
-        // MINI MAPA
-        mapMini = findViewById(R.id.mapMini);
-
-        mapMini.setMultiTouchControls(false);
-        mapMini.setOnTouchListener((v, event) -> event.getAction() == MotionEvent.ACTION_MOVE);
-        double lat = -23.0856931;
-        double lng = -47.2022082;
-
-        String endereco = obterEndereco(lat, lng);
-
-        textEndereco.setText(endereco);
-
-        GeoPoint local = new GeoPoint(lat, lng);
-
-        mapMini.getController().setZoom(16.0);
-        mapMini.getController().setCenter(local);
-
-        Marker marker = new Marker(mapMini);
-
-        marker.setPosition(local);
-        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-
-        mapMini.getOverlays().add(marker);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        carregarDenuncias();
+    }
 
-        if (mapMini != null) {
-            mapMini.onResume();
+    private void iniciarComponentes() {
+        buttonBack         = findViewById(R.id.buttonBack);
+        containerDenuncias = findViewById(R.id.containerDenuncias);
+        textLoading        = findViewById(R.id.textLoading);
+    }
+
+    private void carregarDenuncias() {
+        textLoading.setVisibility(View.VISIBLE);
+        containerDenuncias.removeAllViews();
+
+        String userId = session.getUserId();
+        if (userId.isEmpty()) {
+            textLoading.setText("Erro: usuário não autenticado.");
+            return;
         }
+
+        ApiClient.getInstance().get(
+                ApiConfig.DENUNCIAS_POR_USUARIO + "/" + userId,
+                response -> {
+                    textLoading.setVisibility(View.GONE);
+
+                    try {
+                        JSONArray array = new JSONArray(response);
+
+                        if (array.length() == 0) {
+                            textLoading.setText("Você ainda não fez nenhuma denúncia.");
+                            textLoading.setVisibility(View.VISIBLE);
+                            return;
+                        }
+
+                        for (int i = 0; i < array.length(); i++) {
+                            JSONObject denuncia = array.getJSONObject(i);
+                            adicionarCardDenuncia(denuncia);
+                        }
+
+                    } catch (JSONException e) {
+                        textLoading.setText("Erro ao processar dados.");
+                        textLoading.setVisibility(View.VISIBLE);
+                    }
+                },
+                (code, msg) -> {
+                    textLoading.setText("Erro ao carregar denúncias. Verifique sua conexão.");
+                    textLoading.setVisibility(View.VISIBLE);
+                }
+        );
+    }
+
+    @SuppressLint({"SetTextI18n", "ClickableViewAccessibility"})
+    private void adicionarCardDenuncia(JSONObject denuncia) {
+        String titulo    = denuncia.optString("titulo", "Denúncia");
+        String descricao = denuncia.optString("descricao", "");
+        String status    = denuncia.optString("status", "ABERTA");
+        double latitude  = denuncia.optDouble("latitude", -23.0882);
+        double longitude = denuncia.optDouble("longitude", -47.2234);
+
+        View cardView = LayoutInflater.from(this).inflate(R.layout.item_denuncia, containerDenuncias, false);
+
+        TextView textTitulo       = cardView.findViewById(R.id.textTitulo);
+        TextView textDescricao    = cardView.findViewById(R.id.textDescricao);
+        LinearLayout layoutStatus = cardView.findViewById(R.id.layoutStatus);
+        View dotStatus            = cardView.findViewById(R.id.dotStatus);
+        TextView textStatus       = cardView.findViewById(R.id.textStatus);
+
+        LinearLayout buttonExpandir  = cardView.findViewById(R.id.buttonExpandir);
+        ImageView iconExpandir       = cardView.findViewById(R.id.iconExpandir);
+        LinearLayout layoutExpandido = cardView.findViewById(R.id.layoutExpandido);
+        TextView textEndereco        = cardView.findViewById(R.id.textEndereco);
+        MapView mapMini              = cardView.findViewById(R.id.mapMini);
+
+        // Preencher dados básicos
+        textTitulo.setText(titulo);
+        textDescricao.setText(descricao);
+        configurarBadgeStatus(status, layoutStatus, dotStatus, textStatus);
+
+        // Configurar mapa e endereço
+        textEndereco.setText(obterEndereco(latitude, longitude));
+
+        mapMini.setMultiTouchControls(false);
+        mapMini.setOnTouchListener((v, event) -> event.getAction() == MotionEvent.ACTION_MOVE);
+
+        GeoPoint local = new GeoPoint(latitude, longitude);
+        mapMini.getController().setZoom(16.0);
+        mapMini.getController().setCenter(local);
+
+        Marker marker = new Marker(mapMini);
+        marker.setPosition(local);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        mapMini.getOverlays().add(marker);
+
+        // Lógica de expansão
+        final boolean[] expandido = {false};
+        buttonExpandir.setOnClickListener(v -> {
+            expandido[0] = !expandido[0];
+            if (expandido[0]) {
+                layoutExpandido.setVisibility(View.VISIBLE);
+                iconExpandir.setRotation(180);
+                // Forçar redesenho do mapa quando fica visível
+                mapMini.invalidate();
+            } else {
+                layoutExpandido.setVisibility(View.GONE);
+                iconExpandir.setRotation(0);
+            }
+        });
+
+        containerDenuncias.addView(cardView);
+    }
+
+    private void configurarBadgeStatus(String statusEnum, LinearLayout layout, View dot, TextView text) {
+        int bgColor, fgColor;
+        String label;
+
+        switch (statusEnum) {
+            case "EM_ANALISE":
+                bgColor = 0xFFFFF3D6;
+                fgColor = 0xFFF5A623;
+                label = "EM ANÁLISE";
+                break;
+            case "RESOLVIDA":
+                bgColor = 0xFFD6F5E0;
+                fgColor = 0xFF27AE60;
+                label = "CONCLUÍDO";
+                break;
+            case "ABERTA":
+            default:
+                bgColor = 0xFFD6EAFF;
+                fgColor = 0xFF2B7DE9;
+                label = "EM ANDAMENTO"; // Pela regra de negócio, ou "ABERTA"
+                break;
+        }
+
+        layout.setBackgroundColor(bgColor);
+        dot.setBackgroundColor(fgColor);
+        text.setText(label);
+        text.setTextColor(fgColor);
+    }
+
+    private String obterEndereco(double latitude, double longitude) {
+        try {
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            List<Address> enderecos = geocoder.getFromLocation(latitude, longitude, 1);
+
+            if (enderecos != null && !enderecos.isEmpty()) {
+                Address endereco = enderecos.get(0);
+                return endereco.getAddressLine(0);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "Endereço não encontrado";
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        if (mapMini != null) {
-            mapMini.onPause();
-        }
-    }
-
-    private String obterEndereco(double latitude, double longitude) {
-
-        try {
-
-            Geocoder geocoder = new Geocoder(
-                    this,
-                    Locale.getDefault()
-            );
-
-            List<Address> enderecos =
-                    geocoder.getFromLocation(latitude, longitude, 1);
-
-            if (enderecos != null && !enderecos.isEmpty()) {
-
-                Address endereco = enderecos.get(0);
-
-                return endereco.getAddressLine(0);
-            }
-
-        } catch (IOException e) {
-
-            e.printStackTrace();
-        }
-
-        return "Endereço não encontrado";
+        // Não é possível chamar onPause/onResume em todos os mapMini da lista facilmente
+        // sem mantê-los numa estrutura, mas como são read-only, não causará grandes problemas
     }
 }

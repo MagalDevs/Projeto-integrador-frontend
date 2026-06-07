@@ -10,69 +10,95 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.textfield.TextInputEditText;
+
+import com.example.projeto_integrador.session.SessionManager;
+
 public class LoginActivity extends AppCompatActivity {
 
+    private TextInputEditText editEmail, editSenha;
+    private MaterialButton buttonLogin;
     private TextView textCadastro;
-    private TextView textAcessoAdmin;
+
+    private SessionManager session;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        EdgeToEdge.enable(this);
+        session = new SessionManager(this);
 
+        // Se já está logado, redireciona direto
+        if (session.isLoggedIn()) {
+            redirecionarPorRole();
+            return;
+        }
+
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_login);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-
             v.setPadding(
                     systemBars.left,
                     systemBars.top,
                     systemBars.right,
                     systemBars.bottom
             );
-
             return insets;
         });
 
         iniciarComponentes();
-
         configurarEventos();
     }
 
     private void iniciarComponentes() {
-
+        editEmail    = findViewById(R.id.editEmail);
+        editSenha    = findViewById(R.id.editSenha);
+        buttonLogin  = findViewById(R.id.buttonLogin);
         textCadastro = findViewById(R.id.textCadastro);
-
-        textAcessoAdmin = findViewById(R.id.textAcessoAdmin);
-
     }
 
     private void configurarEventos() {
 
-        textCadastro.setOnClickListener(v -> {
+        // Botão "Entrar"
+        buttonLogin.setOnClickListener(v -> {
+            // TODO: Integrar com endpoint de login quando estiver pronto no backend
+            Snackbar.make(
+                    findViewById(R.id.main),
+                    "⚠️ Login será integrado em breve. Use o cadastro para criar uma conta.",
+                    Snackbar.LENGTH_LONG
+            ).show();
+        });
 
+        // Link "Cadastre-se"
+        textCadastro.setOnClickListener(v -> {
             Intent intent = new Intent(
                     LoginActivity.this,
                     RegisterActivity.class
             );
-
             startActivity(intent);
-
         });
+    }
 
-        // Acesso temporário ao painel admin (sem autenticação)
-        textAcessoAdmin.setOnClickListener(v -> {
+    /**
+     * Redireciona o usuário para a tela correta baseado na role.
+     * ADMIN → AdminDenunciasActivity
+     * USER  → MainActivity (mapa)
+     */
+    private void redirecionarPorRole() {
+        Intent intent;
 
-            Intent intent = new Intent(
-                    LoginActivity.this,
-                    AdminDenunciasActivity.class
-            );
+        if (session.isAdmin()) {
+            intent = new Intent(this, AdminDenunciasActivity.class);
+        } else {
+            intent = new Intent(this, MainActivity.class);
+        }
 
-            startActivity(intent);
-
-        });
-
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

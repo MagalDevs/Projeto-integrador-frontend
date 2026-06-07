@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Permite tráfego HTTP (cleartext) para o backend local.
+    Android 9+ bloqueia HTTP por padrão; sem isso, as chamadas falhariam.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.64.22.159</domain>
+    </domain-config>
+</network-security-config>

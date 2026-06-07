@@ -70,11 +70,34 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <!-- TIPO -->
+            <!-- TÍTULO -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tipo da denúncia"
+                android:text="Título da denúncia"
+                android:textColor="#1A3A5C"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/tituloDenuncia"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="#FFFFFF"
+                android:hint="Ex.: Buraco na rua principal"
+                android:inputType="text"
+                android:padding="14dp"
+                android:textColor="#000000"
+                android:textColorHint="#888888"
+                android:elevation="2dp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- CATEGORIA -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Categoria"
                 android:textColor="#1A3A5C"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -86,8 +109,7 @@
                 android:layout_height="52dp"
                 android:background="#FFFFFF"
                 android:padding="12dp"
-                android:elevation="2dp"
-                android:entries="@array/tipos_denuncia"/>
+                android:elevation="2dp" />
 
             <!-- DESCRIÇÃO -->
             <TextView

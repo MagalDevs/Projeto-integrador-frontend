@@ -11,6 +11,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.projeto_integrador.session.SessionManager;
+
 public class InicioActivity extends AppCompatActivity {
 
     @Override
@@ -36,7 +38,21 @@ public class InicioActivity extends AppCompatActivity {
         // Delay da SplashScreen
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
 
-            Intent intent = new Intent(InicioActivity.this, LoginActivity.class);
+            SessionManager session = new SessionManager(this);
+
+            Intent intent;
+
+            if (session.isLoggedIn()) {
+                // Já logado → vai direto para a tela correta
+                if (session.isAdmin()) {
+                    intent = new Intent(InicioActivity.this, AdminDenunciasActivity.class);
+                } else {
+                    intent = new Intent(InicioActivity.this, MainActivity.class);
+                }
+            } else {
+                // Não logado → tela de login
+                intent = new Intent(InicioActivity.this, LoginActivity.class);
+            }
 
             startActivity(intent);
 

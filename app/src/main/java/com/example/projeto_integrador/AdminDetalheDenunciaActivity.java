@@ -17,9 +17,13 @@ import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
+import com.example.projeto_integrador.network.ApiClient;
+import com.example.projeto_integrador.network.ApiConfig;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
@@ -60,6 +64,7 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
     private MaterialButton buttonSalvarAlteracoes;
 
     // Dados
+    private String denunciaId;
     private double latitude;
     private double longitude;
     private String statusAtual;
@@ -117,6 +122,7 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
     private void carregarDadosDaIntent() {
 
         // Recebe dados passados pelo AdminDenunciasActivity
+        denunciaId = getIntent().getStringExtra("denunciaId");
         String tipo = getIntent().getStringExtra("tipo");
         String cidadao = getIntent().getStringExtra("cidadao");
         String data = getIntent().getStringExtra("data");
@@ -192,22 +198,7 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
         });
 
         // BOTÃO SALVAR STATUS
-        buttonSalvarStatus.setOnClickListener(v -> {
-
-            String novoStatus = spinnerStatus.getSelectedItem().toString();
-
-            statusAtual = novoStatus;
-
-            atualizarBadgeStatus(novoStatus);
-
-            Snackbar.make(
-                    findViewById(R.id.main),
-                    "✅ Status atualizado para: " + novoStatus,
-                    Snackbar.LENGTH_SHORT
-            ).show();
-
-            // TODO: Enviar atualização de status para o backend
-        });
+        buttonSalvarStatus.setOnClickListener(v -> salvarStatusViaApi());
 
         // BOTÃO ENVIAR DEVOLUTIVA
         buttonEnviarDevolutiva.setOnClickListener(v -> {
@@ -240,22 +231,87 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
         });
 
         // BOTÃO SALVAR TUDO (barra inferior)
-        buttonSalvarAlteracoes.setOnClickListener(v -> {
+        buttonSalvarAlteracoes.setOnClickListener(v -> salvarStatusViaApi());
+    }
 
-            String novoStatus = spinnerStatus.getSelectedItem().toString();
+    /**
+     * Envia atualização de status para o backend via PATCH.
+     * Mapeia o texto do spinner para o enum do backend.
+     */
+    private void salvarStatusViaApi() {
+        String novoStatusDisplay = spinnerStatus.getSelectedItem().toString();
+        String statusEnum = mapearStatusParaEnum(novoStatusDisplay);
 
-            statusAtual = novoStatus;
-
-            atualizarBadgeStatus(novoStatus);
-
+        if (denunciaId == null || denunciaId.isEmpty()) {
             Snackbar.make(
                     findViewById(R.id.main),
-                    "💾 Todas as alterações foram salvas!",
+                    "❌ ID da denúncia não encontrado.",
                     Snackbar.LENGTH_SHORT
             ).show();
+            return;
+        }
 
-            // TODO: Salvar todas as alterações no backend
-        });
+        // Desabilita botões durante a chamada
+        buttonSalvarStatus.setEnabled(false);
+        buttonSalvarAlteracoes.setEnabled(false);
+
+        String path = ApiConfig.DENUNCIAS + "/" + denunciaId
+                + ApiConfig.DENUNCIAS_UPDATE_STATUS + "/" + statusEnum;
+
+        ApiClient.getInstance().patchNoBody(
+                path,
+                response -> {
+                    statusAtual = novoStatusDisplay;
+                    atualizarBadgeStatus(novoStatusDisplay);
+
+                    buttonSalvarStatus.setEnabled(true);
+                    buttonSalvarAlteracoes.setEnabled(true);
+
+                    Snackbar.make(
+                            findViewById(R.id.main),
+                            "✅ Status atualizado para: " + novoStatusDisplay,
+                            Snackbar.LENGTH_SHORT
+                    ).show();
+                },
+                (code, msg) -> {
+                    buttonSalvarStatus.setEnabled(true);
+                    buttonSalvarAlteracoes.setEnabled(true);
+
+                    String errorMsg;
+                    if (code == -1) {
+                        errorMsg = "Sem conexão com o servidor.";
+                    } else {
+                        errorMsg = "Erro ao atualizar status (código " + code + ").";
+                    }
+
+                    Snackbar.make(
+                            findViewById(R.id.main),
+                            "❌ " + errorMsg,
+                            Snackbar.LENGTH_LONG
+                    ).show();
+                }
+        );
+    }
+
+    /**
+     * Mapeia o texto de display do app para o enum do backend.
+     *
+     * Display (App)     → Enum (Backend)
+     * "EM ANÁLISE"      → "EM_ANALISE"
+     * "EM ANDAMENTO"    → "EM_ANALISE"
+     * "CONCLUÍDO"       → "RESOLVIDA"
+     */
+    private String mapearStatusParaEnum(String displayStatus) {
+        switch (displayStatus) {
+            case "EM ANÁLISE":
+                return "EM_ANALISE";
+            case "EM ANDAMENTO":
+                return "EM_ANALISE";
+            case "CONCLUÍDO":
+                return "RESOLVIDA";
+            default:
+                return "ABERTA";
+        }
     }
 
     /**
