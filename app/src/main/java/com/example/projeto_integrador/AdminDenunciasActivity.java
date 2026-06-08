@@ -116,11 +116,12 @@ public class AdminDenunciasActivity extends AppCompatActivity {
         String createdAt = denuncia.optString("createdAt", "");
 
         // Dados do usuário
-        String cidadao = "Cidadão";
+        String cidadaoNome = "Cidadão";
         JSONObject usuario = denuncia.optJSONObject("usuario");
         if (usuario != null) {
-            cidadao = usuario.optString("nome", "Cidadão");
+            cidadaoNome = usuario.optString("nome", "Cidadão");
         }
+        final String cidadao = cidadaoNome;
 
         // Dados da categoria
         String categoriaNome = "";

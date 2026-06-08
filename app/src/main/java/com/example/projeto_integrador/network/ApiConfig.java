@@ -11,7 +11,7 @@ public final class ApiConfig {
     private ApiConfig() { /* utility class */ }
 
     // ── Base ─────────────────────────────────────────────────────────────────
-    public static final String BASE_URL = "http://10.64.22.159:8080";
+    public static final String BASE_URL = "http://172.20.10.2:8080";
 
     // ── Usuários ─────────────────────────────────────────────────────────────
     public static final String USUARIOS          = "/usuarios";
