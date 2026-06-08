@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -35,6 +36,8 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.snackbar.Snackbar;
@@ -78,6 +81,9 @@ public class NovaDenunciaActivity extends AppCompatActivity {
     private MaterialCardView mapPreviewCard;
     private Marker previewMarker;
     private MaterialButton buttonEnviar;
+    private MaterialButton buttonLocalAtual;
+    private ProgressBar progressEnviar;
+    private ProgressBar progressLocalizacao;
 
     // ── Estado ───────────────────────────────────────────────────────────────
     private boolean temFotoSelecionada = false;
@@ -96,6 +102,7 @@ public class NovaDenunciaActivity extends AppCompatActivity {
 
     // ── Location ─────────────────────────────────────────────────────────────
     private FusedLocationProviderClient fusedLocationClient;
+    private CancellationTokenSource locationCancellationTokenSource;
 
     // ── Launchers ────────────────────────────────────────────────────────────
 
@@ -151,8 +158,10 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         mapPreview        = findViewById(R.id.mapPreview);
         mapPreviewCard    = findViewById(R.id.mapPreviewCard);
         buttonEnviar      = findViewById(R.id.enviarDenuncia);
+        buttonLocalAtual  = findViewById(R.id.buttonLocalAtual);
+        progressEnviar      = findViewById(R.id.progressEnviar);
+        progressLocalizacao = findViewById(R.id.progressLocalizacao);
 
-        MaterialButton buttonLocalAtual    = findViewById(R.id.buttonLocalAtual);
         MaterialButton buttonSelecionarMapa = findViewById(R.id.buttonSelecionarMapa);
         ScrollView scrollView              = findViewById(R.id.scrollView);
 
@@ -318,6 +327,7 @@ public class NovaDenunciaActivity extends AppCompatActivity {
         // Feedback visual
         buttonEnviar.setEnabled(false);
         buttonEnviar.setText("Enviando...");
+        progressEnviar.setVisibility(View.VISIBLE);
 
         ApiClient.getInstance().postMultipart(
                 ApiConfig.DENUNCIAS,
@@ -325,6 +335,8 @@ public class NovaDenunciaActivity extends AppCompatActivity {
                 fileFields,
                 fileNames,
                 response -> {
+                    progressEnviar.setVisibility(View.GONE);
+
                     Snackbar.make(
                             findViewById(R.id.main),
                             "✅ Denúncia enviada com sucesso!",
@@ -337,6 +349,7 @@ public class NovaDenunciaActivity extends AppCompatActivity {
                 (code, msg) -> {
                     buttonEnviar.setEnabled(true);
                     buttonEnviar.setText("🚀 Enviar denúncia");
+                    progressEnviar.setVisibility(View.GONE);
 
                     String errorMsg;
                     if (code == -1) {
@@ -454,25 +467,57 @@ public class NovaDenunciaActivity extends AppCompatActivity {
             return;
         }
 
-        fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-            if (location != null) {
-                latSelecionada = location.getLatitude();
-                lngSelecionada = location.getLongitude();
-                temLocalizacao = true;
-                GeoPoint ponto = new GeoPoint(latSelecionada, lngSelecionada);
+        // Feedback de carregamento — buscar uma localização fresca pode levar alguns segundos
+        buttonLocalAtual.setEnabled(false);
+        progressLocalizacao.setVisibility(View.VISIBLE);
+        localizacao.setText("Obtendo localização atual...");
 
-                String endereco = obterEndereco(latSelecionada, lngSelecionada);
+        if (locationCancellationTokenSource != null) {
+            locationCancellationTokenSource.cancel();
+        }
+        locationCancellationTokenSource = new CancellationTokenSource();
 
-                localizacao.setText("📍 " + endereco);
+        fusedLocationClient.getCurrentLocation(
+                        Priority.PRIORITY_HIGH_ACCURACY,
+                        locationCancellationTokenSource.getToken())
+                .addOnSuccessListener(location -> {
+                    buttonLocalAtual.setEnabled(true);
+                    progressLocalizacao.setVisibility(View.GONE);
 
-                mapPreviewCard.setVisibility(View.VISIBLE);
-                mapPreview.getController().setCenter(ponto);
-                previewMarker.setPosition(ponto);
-                mapPreview.invalidate();
-            } else {
-                localizacao.setText("Não foi possível obter a localização");
-            }
-        });
+                    if (location != null) {
+                        latSelecionada = location.getLatitude();
+                        lngSelecionada = location.getLongitude();
+                        temLocalizacao = true;
+                        GeoPoint ponto = new GeoPoint(latSelecionada, lngSelecionada);
+
+                        String endereco = obterEndereco(latSelecionada, lngSelecionada);
+
+                        localizacao.setText("📍 " + endereco);
+
+                        mapPreviewCard.setVisibility(View.VISIBLE);
+                        mapPreview.getController().setCenter(ponto);
+                        previewMarker.setPosition(ponto);
+                        mapPreview.invalidate();
+                    } else {
+                        localizacao.setText("Nenhuma localização selecionada");
+                        Snackbar.make(
+                                findViewById(R.id.main),
+                                "❌ Não foi possível obter sua localização. Verifique se o GPS está ativado.",
+                                Snackbar.LENGTH_LONG
+                        ).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    buttonLocalAtual.setEnabled(true);
+                    progressLocalizacao.setVisibility(View.GONE);
+                    localizacao.setText("Nenhuma localização selecionada");
+
+                    Snackbar.make(
+                            findViewById(R.id.main),
+                            "❌ Erro ao obter localização. Ative o GPS e tente novamente.",
+                            Snackbar.LENGTH_LONG
+                    ).show();
+                });
     }
 
     // ─── Modal de mapa ───────────────────────────────────────────────────────
@@ -538,6 +583,14 @@ public class NovaDenunciaActivity extends AppCompatActivity {
 
         mapDialog.getOverlays().add(new MapEventsOverlay(receiver));
         buttonConfirmar.setOnClickListener(v -> dialog.dismiss());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (locationCancellationTokenSource != null) {
+            locationCancellationTokenSource.cancel();
+        }
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
