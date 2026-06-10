@@ -40,13 +40,32 @@
                 android:textSize="18sp" />
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="10dp"
                 android:text="CidadãoAlerta"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />
+
+            <!-- BOTÃO LOGOUT -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonLogout"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="Sair"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                app:backgroundTint="#29496B"
+                app:cornerRadius="10dp"
+                app:icon="@android:drawable/ic_lock_power_off"
+                app:iconTint="#FFFFFF"
+                app:iconSize="16dp"
+                app:iconPadding="4dp" />
+
         </LinearLayout>
 
         <!-- Headline -->

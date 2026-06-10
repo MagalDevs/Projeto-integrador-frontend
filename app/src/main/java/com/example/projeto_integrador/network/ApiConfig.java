@@ -12,6 +12,7 @@ public final class ApiConfig {
 
     // ── Base ─────────────────────────────────────────────────────────────────
     public static final String BASE_URL = "http://172.20.10.2:8080";
+//    public static final String BASE_URL = "http://192.168.0.102:8080"; - note do magal
 
     // ── Usuários ─────────────────────────────────────────────────────────────
     public static final String USUARIOS          = "/usuarios";
@@ -26,6 +27,9 @@ public final class ApiConfig {
 
     /** Uso: DENUNCIAS + "/{id}/update-status/{status}" */
     public static final String DENUNCIAS_UPDATE_STATUS = "/update-status";
+
+    /** Uso: DENUNCIAS_DEVOLUTIVA + "/{id}" */
+    public static final String DENUNCIAS_DEVOLUTIVA = "/admin/devolutiva";
 
     // ── Categorias ───────────────────────────────────────────────────────────
     public static final String CATEGORIAS        = "/categorias";

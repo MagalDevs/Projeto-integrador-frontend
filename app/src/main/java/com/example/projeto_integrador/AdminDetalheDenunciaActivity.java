@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -17,6 +18,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
+import com.bumptech.glide.Glide;
 import com.example.projeto_integrador.network.ApiClient;
 import com.example.projeto_integrador.network.ApiConfig;
 import com.google.android.material.button.MaterialButton;
@@ -30,6 +32,7 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -68,6 +71,7 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
     private double latitude;
     private double longitude;
     private String statusAtual;
+    private LinearLayout layoutFotos;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -117,6 +121,9 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
         // Barra inferior
         buttonVoltarLista = findViewById(R.id.buttonVoltarLista);
         buttonSalvarAlteracoes = findViewById(R.id.buttonSalvarAlteracoes);
+
+        //fotos
+        layoutFotos = findViewById(R.id.layoutFotos);
     }
 
     private void carregarDadosDaIntent() {
@@ -130,6 +137,8 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
         statusAtual = getIntent().getStringExtra("status");
         latitude = getIntent().getDoubleExtra("latitude", -23.0882);
         longitude = getIntent().getDoubleExtra("longitude", -47.2234);
+        ArrayList<String> imagens = getIntent().getStringArrayListExtra("imagens");
+        carregarImagens(imagens);
 
         // Preenche os campos
         if (tipo != null) textTipo.setText(tipo);
@@ -177,58 +186,24 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
 
         // SPINNER — detecta mudança de status
         spinnerStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-
                 String novoStatus = parent.getItemAtPosition(position).toString();
-
-                // Mostra/esconde card de devolutiva baseado no status
-                if (novoStatus.equals("CONCLUÍDO")) {
-                    cardDevolutiva.setVisibility(View.VISIBLE);
-                } else {
-                    cardDevolutiva.setVisibility(View.GONE);
-                }
+                // Mostra devolutiva só ao marcar RESOLVIDA
+                cardDevolutiva.setVisibility(
+                        novoStatus.equals("RESOLVIDA") ? View.VISIBLE : View.GONE
+                );
             }
-
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // Nada a fazer
-            }
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
 
         // BOTÃO SALVAR STATUS
         buttonSalvarStatus.setOnClickListener(v -> salvarStatusViaApi());
 
         // BOTÃO ENVIAR DEVOLUTIVA
-        buttonEnviarDevolutiva.setOnClickListener(v -> {
-
-            String devolutiva = editDevolutiva.getText().toString().trim();
-
-            if (devolutiva.isEmpty()) {
-
-                Snackbar.make(
-                        findViewById(R.id.main),
-                        "⚠️ Escreva uma devolutiva antes de enviar.",
-                        Snackbar.LENGTH_SHORT
-                ).show();
-
-                return;
-            }
-
-            Snackbar.make(
-                    findViewById(R.id.main),
-                    "📨 Devolutiva enviada com sucesso!",
-                    Snackbar.LENGTH_LONG
-            ).show();
-
-            // Desabilita o campo e botão após envio
-            editDevolutiva.setEnabled(false);
-            buttonEnviarDevolutiva.setEnabled(false);
-            buttonEnviarDevolutiva.setText("✅ Devolutiva Enviada");
-
-            // TODO: Enviar devolutiva para o backend e notificar o cidadão
-        });
+        // BOTÃO ENVIAR DEVOLUTIVA
+        buttonEnviarDevolutiva.setOnClickListener(v -> enviarDevolutiva());
 
         // BOTÃO SALVAR TUDO (barra inferior)
         buttonSalvarAlteracoes.setOnClickListener(v -> salvarStatusViaApi());
@@ -305,10 +280,9 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
         switch (displayStatus) {
             case "EM ANÁLISE":
                 return "EM_ANALISE";
-            case "EM ANDAMENTO":
-                return "EM_ANALISE";
-            case "CONCLUÍDO":
+            case "RESOLVIDA":
                 return "RESOLVIDA";
+            case "ABERTA":
             default:
                 return "ABERTA";
         }
@@ -318,27 +292,24 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
      * Atualiza visualmente o badge de status com as cores correspondentes.
      */
     private void atualizarBadgeStatus(String status) {
-
         switch (status) {
-
+            case "ABERTA":
+                layoutStatusBadge.setBackgroundColor(0xFFD6EAFF);
+                dotStatus.setBackgroundColor(0xFF2B7DE9);
+                textStatusBadge.setText("ABERTA");
+                textStatusBadge.setTextColor(0xFF2B7DE9);
+                break;
             case "EM ANÁLISE":
                 layoutStatusBadge.setBackgroundColor(0xFFFFF3D6);
                 dotStatus.setBackgroundColor(0xFFF5A623);
                 textStatusBadge.setText("EM ANÁLISE");
                 textStatusBadge.setTextColor(0xFFF5A623);
                 break;
-
-            case "EM ANDAMENTO":
-                layoutStatusBadge.setBackgroundColor(0xFFD6EAFF);
-                dotStatus.setBackgroundColor(0xFF2B7DE9);
-                textStatusBadge.setText("EM ANDAMENTO");
-                textStatusBadge.setTextColor(0xFF2B7DE9);
-                break;
-
+            case "RESOLVIDA":
             case "CONCLUÍDO":
                 layoutStatusBadge.setBackgroundColor(0xFFD6F5E0);
                 dotStatus.setBackgroundColor(0xFF27AE60);
-                textStatusBadge.setText("CONCLUÍDO");
+                textStatusBadge.setText("RESOLVIDA");
                 textStatusBadge.setTextColor(0xFF27AE60);
                 break;
         }
@@ -348,12 +319,17 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
      * Seleciona o status correto no Spinner baseado na string recebida.
      */
     private void selecionarStatusNoSpinner(String status) {
+        // Converte enum do backend para o texto do spinner
+        String displayStatus;
+        switch (status) {
+            case "EM_ANALISE": displayStatus = "EM ANÁLISE"; break;
+            case "RESOLVIDA":  displayStatus = "RESOLVIDA";  break;
+            default:           displayStatus = "ABERTA";     break;
+        }
 
         String[] statusArray = getResources().getStringArray(R.array.status_denuncia);
-
         for (int i = 0; i < statusArray.length; i++) {
-
-            if (statusArray[i].equals(status)) {
+            if (statusArray[i].equals(displayStatus)) {
                 spinnerStatus.setSelection(i);
                 break;
             }
@@ -403,5 +379,114 @@ public class AdminDetalheDenunciaActivity extends AppCompatActivity {
         }
 
         return "Endereço não encontrado";
+    }
+
+    private void carregarImagens(ArrayList<String> imagens) {
+        layoutFotos.removeAllViews();
+
+        if (imagens == null || imagens.isEmpty()) {
+            TextView semFoto = new TextView(this);
+            semFoto.setText("Nenhuma foto anexada.");
+            semFoto.setTextColor(0xFF9AA5B1);
+            semFoto.setTextSize(13);
+            layoutFotos.addView(semFoto);
+            return;
+        }
+
+        int sizePx   = dpToPx(140);
+        int marginPx = dpToPx(12);
+
+        for (String url : imagens) {
+            ImageView imageView = new ImageView(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(sizePx, sizePx);
+            params.setMarginEnd(marginPx);
+            imageView.setLayoutParams(params);
+            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            imageView.setBackgroundColor(0xFFD9E2EC);
+
+            Glide.with(this)
+                    .load(url)
+                    .placeholder(R.drawable.ic_launcher_background)
+                    .error(R.drawable.ic_launcher_background)
+                    .centerCrop()
+                    .into(imageView);
+
+            layoutFotos.addView(imageView);
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
+    }
+
+    private void enviarDevolutiva() {
+        String devolutiva = editDevolutiva.getText().toString().trim();
+
+        if (devolutiva.isEmpty()) {
+            Snackbar.make(findViewById(R.id.main),
+                    "⚠️ Escreva uma devolutiva antes de enviar.",
+                    Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (devolutiva.length() < 10) {
+            Snackbar.make(findViewById(R.id.main),
+                    "⚠️ A devolutiva deve ter ao menos 10 caracteres.",
+                    Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (denunciaId == null || denunciaId.isEmpty()) {
+            Snackbar.make(findViewById(R.id.main),
+                    "❌ ID da denúncia não encontrado.",
+                    Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        buttonEnviarDevolutiva.setEnabled(false);
+        buttonEnviarDevolutiva.setText("Enviando...");
+
+        try {
+            JSONObject body = new JSONObject();
+            body.put("devolutiva", devolutiva);
+
+            String path = ApiConfig.DENUNCIAS + ApiConfig.DENUNCIAS_DEVOLUTIVA + "/" + denunciaId;
+
+            ApiClient.getInstance().patch(
+                    path,
+                    body,
+                    response -> {
+                        editDevolutiva.setEnabled(false);
+                        buttonEnviarDevolutiva.setText("✅ Devolutiva Enviada");
+
+                        Snackbar.make(findViewById(R.id.main),
+                                "📨 Devolutiva enviada com sucesso!",
+                                Snackbar.LENGTH_LONG).show();
+                    },
+                    (code, msg) -> {
+                        buttonEnviarDevolutiva.setEnabled(true);
+                        buttonEnviarDevolutiva.setText("📨 Enviar Devolutiva");
+
+                        String errorMsg;
+                        switch (code) {
+                            case 400: errorMsg = "Devolutiva inválida. Mínimo 10 caracteres."; break;
+                            case 404: errorMsg = "Denúncia não encontrada."; break;
+                            case -1:  errorMsg = "Sem conexão com o servidor."; break;
+                            default:  errorMsg = "Erro ao enviar (código " + code + ")."; break;
+                        }
+
+                        Snackbar.make(findViewById(R.id.main),
+                                "❌ " + errorMsg,
+                                Snackbar.LENGTH_LONG).show();
+                    }
+            );
+
+        } catch (JSONException e) {
+            buttonEnviarDevolutiva.setEnabled(true);
+            buttonEnviarDevolutiva.setText("📨 Enviar Devolutiva");
+            Snackbar.make(findViewById(R.id.main),
+                    "❌ Erro interno ao montar requisição.",
+                    Snackbar.LENGTH_SHORT).show();
+        }
     }
 }

@@ -227,11 +227,26 @@ public final class ApiClient {
 
         URL url = new URL(ApiConfig.url(path));
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod(method.equals("PATCH") ? "POST" : method);
 
-        // PATCH não é suportado nativamente por HttpURLConnection em todas as versões
         if (method.equals("PATCH")) {
-            conn.setRequestProperty("X-HTTP-Method-Override", "PATCH");
+            // HttpURLConnection não suporta PATCH nativamente — força via reflexão
+            try {
+                // Tenta setar PATCH diretamente
+                conn.setRequestMethod("PATCH");
+            } catch (java.net.ProtocolException e) {
+                // Fallback: reflexão para contornar a limitação
+                try {
+                    java.lang.reflect.Field methodField =
+                            HttpURLConnection.class.getDeclaredField("method");
+                    methodField.setAccessible(true);
+                    methodField.set(conn, "PATCH");
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+            // Remove o X-HTTP-Method-Override — Spring não o usa por padrão
+        } else {
+            conn.setRequestMethod(method);
         }
 
         conn.setConnectTimeout(TIMEOUT_MS);

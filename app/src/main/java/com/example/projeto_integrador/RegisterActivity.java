@@ -3,6 +3,8 @@ package com.example.projeto_integrador;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -114,7 +116,9 @@ public class RegisterActivity extends AppCompatActivity {
         String email = getText(editEmail);
         String senha = getText(editSenha);
 
-        // Feedback visual: desabilita botão durante a requisição
+        Log.d("CADASTRO", "URL: " + ApiConfig.url(ApiConfig.USUARIOS));
+        Log.d("CADASTRO", "Body: nome=" + nome + " email=" + email);
+
         buttonCadastrar.setEnabled(false);
         buttonCadastrar.setText("Criando conta...");
 
@@ -127,8 +131,8 @@ public class RegisterActivity extends AppCompatActivity {
             ApiClient.getInstance().post(
                     ApiConfig.USUARIOS,
                     body,
-                    // ── Sucesso ──────────────────────────────
                     response -> {
+                        Log.d("CADASTRO", "Resposta: " + response);
                         try {
                             JSONObject user = new JSONObject(response);
 
@@ -137,58 +141,42 @@ public class RegisterActivity extends AppCompatActivity {
                             String mail = user.getString("email");
                             String role = user.getString("role");
 
-                            // Salva sessão
                             session.saveUser(id, name, mail, role);
-
-                            Snackbar.make(
-                                    findViewById(R.id.main),
-                                    "✅ Conta criada com sucesso!",
-                                    Snackbar.LENGTH_SHORT
-                            ).show();
-
-                            // Redireciona com base na role
                             redirecionarPorRole();
 
                         } catch (JSONException e) {
+                            Log.e("CADASTRO", "Erro parse: " + e.getMessage() + " | JSON: " + response);
                             restaurarBotao();
-                            Snackbar.make(
-                                    findViewById(R.id.main),
-                                    "Erro ao processar resposta do servidor.",
-                                    Snackbar.LENGTH_LONG
-                            ).show();
+                            mostrarErro("Erro ao processar resposta: " + e.getMessage());
                         }
                     },
-                    // ── Erro ─────────────────────────────────
                     (statusCode, message) -> {
+                        Log.e("CADASTRO", "Erro HTTP " + statusCode + ": " + message);
                         restaurarBotao();
 
                         String errorMsg;
-                        if (statusCode == 409) {
-                            errorMsg = "Este e-mail já está cadastrado.";
-                        } else if (statusCode == 400) {
-                            errorMsg = "Dados inválidos. Verifique os campos.";
-                        } else if (statusCode == -1) {
-                            errorMsg = "Sem conexão com o servidor. Verifique sua rede.";
-                        } else {
-                            errorMsg = "Erro no servidor (código " + statusCode + ").";
+                        switch (statusCode) {
+                            case 409: errorMsg = "Este e-mail já está cadastrado."; break;
+                            case 400: errorMsg = "Dados inválidos. Verifique os campos."; break;
+                            case -1:  errorMsg = "Sem conexão. Verifique se o servidor está rodando em " + ApiConfig.BASE_URL; break;
+                            default:  errorMsg = "Erro no servidor (código " + statusCode + "): " + message; break;
                         }
-
-                        Snackbar.make(
-                                findViewById(R.id.main),
-                                "❌ " + errorMsg,
-                                Snackbar.LENGTH_LONG
-                        ).show();
+                        mostrarErro(errorMsg);
                     }
             );
 
         } catch (JSONException e) {
+            Log.e("CADASTRO", "Erro ao montar body: " + e.getMessage());
             restaurarBotao();
-            Snackbar.make(
-                    findViewById(R.id.main),
-                    "Erro ao montar requisição.",
-                    Snackbar.LENGTH_LONG
-            ).show();
+            mostrarErro("Erro interno ao montar requisição.");
         }
+    }
+
+    // Substitua o Snackbar inline por este método centralizado
+    private void mostrarErro(String msg) {
+        // Usa a window decor view como âncora — sempre disponível
+        View rootView = getWindow().getDecorView().getRootView();
+        Snackbar.make(rootView, "❌ " + msg, Snackbar.LENGTH_LONG).show();
     }
 
     // ── Helpers ─────────────────────────────────────────────

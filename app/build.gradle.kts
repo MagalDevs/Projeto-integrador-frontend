@@ -1,11 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
 }
 
 android {
     namespace = "com.example.projeto_integrador"
-    compileSdk {
-        version = release(36)
+    compileSdk = 36
+
+    // Load local properties safely
+    val localProps = Properties().apply {
+        val propertiesFile = rootProject.file("local.properties")
+        if (propertiesFile.exists()) {
+            propertiesFile.inputStream().use { load(it) }
+        }
     }
 
     defaultConfig {
@@ -15,7 +23,15 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        // Build config fields from local.properties
+        buildConfigField("String", "SUPABASE_URL", "\"${localProps.getProperty("SUPABASE_URL") ?: ""}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps.getProperty("SUPABASE_ANON_KEY") ?: ""}\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -46,4 +62,9 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.18")
     implementation("com.google.android.material:material:1.11.0")
     implementation("com.google.android.gms:play-services-location:21.2.0")
+    // HTTP
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // JSON
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 }
