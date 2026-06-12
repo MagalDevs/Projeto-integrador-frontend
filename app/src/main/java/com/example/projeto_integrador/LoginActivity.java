@@ -102,6 +102,10 @@ public class LoginActivity extends AppCompatActivity {
             showSnack("Informe sua senha.");
             return;
         }
+        if (!SupabaseClient.isConfigured()) {
+            showSnack("Configuração do servidor ausente (SUPABASE_URL/ANON_KEY no local.properties).");
+            return;
+        }
 
         setCarregando(true);
 
@@ -115,10 +119,18 @@ public class LoginActivity extends AppCompatActivity {
                 MediaType.parse("application/json")
         );
 
-        Request request = SupabaseClient
-                .requestBuilder("/auth/v1/token?grant_type=password")
-                .post(requestBody)
-                .build();
+        Request request;
+        try {
+            request = SupabaseClient
+                    .requestBuilder("/auth/v1/token?grant_type=password")
+                    .post(requestBody)
+                    .build();
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "URL do Supabase inválida", e);
+            setCarregando(false);
+            showSnack("Configuração do servidor inválida. Verifique o local.properties.");
+            return;
+        }
 
         SupabaseClient.getHttpClient().newCall(request).enqueue(new Callback() {
 
@@ -164,10 +176,19 @@ public class LoginActivity extends AppCompatActivity {
      */
     private void processarRespostaLogin(String json) {
         try {
-            JsonObject root   = JsonParser.parseString(json).getAsJsonObject();
-            JsonObject user   = root.getAsJsonObject("user");
-            String     userId = user.get("id").getAsString();
-            String     email  = user.get("email").getAsString();
+            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+            if (!root.has("user") || !root.get("user").isJsonObject()) {
+                showSnack("Resposta inesperada do servidor.");
+                return;
+            }
+            JsonObject user = root.getAsJsonObject("user");
+            if (!user.has("id") || user.get("id").isJsonNull()
+                    || !user.has("email") || user.get("email").isJsonNull()) {
+                showSnack("Resposta inesperada do servidor.");
+                return;
+            }
+            String userId = user.get("id").getAsString();
+            String email  = user.get("email").getAsString();
 
             // Log completo para debug
             Log.d(TAG, "user_metadata: " + user.get("user_metadata"));

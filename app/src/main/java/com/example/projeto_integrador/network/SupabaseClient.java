@@ -69,6 +69,16 @@ public class SupabaseClient {
     }
 
     /**
+     * Indica se as credenciais do Supabase foram configuradas no local.properties.
+     * O placeholder do local.properties também conta como não configurado.
+     */
+    public static boolean isConfigured() {
+        return BASE_URL != null && !BASE_URL.isEmpty()
+                && ANON_KEY != null && !ANON_KEY.isEmpty()
+                && !"COLE_A_ANON_KEY_AQUI".equals(ANON_KEY);
+    }
+
+    /**
      * Concatena a BASE_URL com o endpoint de forma segura.
      * @param endpoint O caminho do recurso (ex: "rest/v1/usuarios")
      */
