@@ -3,6 +3,7 @@ package com.example.projeto_integrador;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
@@ -13,19 +14,30 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import com.example.projeto_integrador.network.ApiClient;
+import com.example.projeto_integrador.network.ApiConfig;
+import com.example.projeto_integrador.session.SessionManager;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class RegisterActivity extends AppCompatActivity {
 
     // ── Views ──────────────────────────────────────────────
-    private TextInputLayout  layoutNome, layoutEmail, layoutSenha;
+    private TextInputLayout   layoutNome, layoutEmail, layoutSenha;
     private TextInputEditText editNome, editEmail, editSenha;
     private MaterialButton    buttonCadastrar;
     private TextView          textJaTemConta;
+
+    private SessionManager session;
 
     // ───────────────────────────────────────────────────────
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
+
+        session = new SessionManager(this);
 
         bindViews();
         setupListeners();
@@ -36,6 +48,11 @@ public class RegisterActivity extends AppCompatActivity {
         editNome    = findViewById(R.id.editNome);
         editEmail   = findViewById(R.id.editEmail);
         editSenha   = findViewById(R.id.editSenha);
+
+        // Obtém os TextInputLayout pais dos EditTexts
+        layoutNome  = (TextInputLayout) editNome.getParent().getParent();
+        layoutEmail = (TextInputLayout) editEmail.getParent().getParent();
+        layoutSenha = (TextInputLayout) editSenha.getParent().getParent();
 
         buttonCadastrar = findViewById(R.id.buttonCadastrar);
         textJaTemConta  = findViewById(R.id.textJaTemConta);
@@ -99,16 +116,93 @@ public class RegisterActivity extends AppCompatActivity {
         String email = getText(editEmail);
         String senha = getText(editSenha);
 
-        // TODO: substituir pela sua lógica de cadastro (Firebase, API, etc.)
-        // Exemplo de fluxo de sucesso:
-        Snackbar.make(
-                findViewById(R.id.main),
-                "Conta criada com sucesso!",
-                Snackbar.LENGTH_SHORT
-        ).show();
+        Log.d("CADASTRO", "URL: " + ApiConfig.url(ApiConfig.USUARIOS));
+        Log.d("CADASTRO", "Body: nome=" + nome + " email=" + email);
 
-        // Após cadastro bem-sucedido → vai para LoginActivity
-        navegarParaLogin();
+        buttonCadastrar.setEnabled(false);
+        buttonCadastrar.setText("Criando conta...");
+
+        try {
+            JSONObject body = new JSONObject();
+            body.put("nome", nome);
+            body.put("email", email);
+            body.put("password", senha);
+
+            ApiClient.getInstance().post(
+                    ApiConfig.USUARIOS,
+                    body,
+                    response -> {
+                        Log.d("CADASTRO", "Resposta: " + response);
+                        try {
+                            JSONObject user = new JSONObject(response);
+
+                            String id   = user.getString("id");
+                            String name = user.getString("nome");
+                            String mail = user.getString("email");
+                            String role = user.getString("role");
+
+                            session.saveUser(id, name, mail, role);
+                            redirecionarPorRole();
+
+                        } catch (JSONException e) {
+                            Log.e("CADASTRO", "Erro parse: " + e.getMessage() + " | JSON: " + response);
+                            restaurarBotao();
+                            mostrarErro("Erro ao processar resposta: " + e.getMessage());
+                        }
+                    },
+                    (statusCode, message) -> {
+                        Log.e("CADASTRO", "Erro HTTP " + statusCode + ": " + message);
+                        restaurarBotao();
+
+                        String errorMsg;
+                        switch (statusCode) {
+                            case 409: errorMsg = "Este e-mail já está cadastrado."; break;
+                            case 400: errorMsg = "Dados inválidos. Verifique os campos."; break;
+                            case -1:  errorMsg = "Sem conexão. Verifique se o servidor está rodando em " + ApiConfig.BASE_URL; break;
+                            default:  errorMsg = "Erro no servidor (código " + statusCode + "): " + message; break;
+                        }
+                        mostrarErro(errorMsg);
+                    }
+            );
+
+        } catch (JSONException e) {
+            Log.e("CADASTRO", "Erro ao montar body: " + e.getMessage());
+            restaurarBotao();
+            mostrarErro("Erro interno ao montar requisição.");
+        }
+    }
+
+    // Substitua o Snackbar inline por este método centralizado
+    private void mostrarErro(String msg) {
+        // Usa a window decor view como âncora — sempre disponível
+        View rootView = getWindow().getDecorView().getRootView();
+        Snackbar.make(rootView, "❌ " + msg, Snackbar.LENGTH_LONG).show();
+    }
+
+    // ── Helpers ─────────────────────────────────────────────
+
+    private void restaurarBotao() {
+        buttonCadastrar.setEnabled(true);
+        buttonCadastrar.setText("Criar conta");
+    }
+
+    /**
+     * Redireciona com base na role do usuário.
+     * ADMIN → AdminDenunciasActivity
+     * USER  → MainActivity
+     */
+    private void redirecionarPorRole() {
+        Intent intent;
+
+        if (session.isAdmin()) {
+            intent = new Intent(this, AdminDenunciasActivity.class);
+        } else {
+            intent = new Intent(this, MainActivity.class);
+        }
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     // ── Navegação ───────────────────────────────────────────

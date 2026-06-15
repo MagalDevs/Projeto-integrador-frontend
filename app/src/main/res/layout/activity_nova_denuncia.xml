@@ -70,7 +70,30 @@
             android:orientation="vertical"
             android:padding="20dp">
 
-            <!-- TIPO -->
+            <!-- TÍTULO -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Título da denúncia"
+                android:textColor="#1A3A5C"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/tituloDenuncia"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="#FFFFFF"
+                android:hint="Ex.: Buraco na rua principal"
+                android:inputType="text"
+                android:padding="14dp"
+                android:textColor="#000000"
+                android:textColorHint="#888888"
+                android:elevation="2dp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- CATEGORIA -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -86,8 +109,7 @@
                 android:layout_height="52dp"
                 android:background="#FFFFFF"
                 android:padding="12dp"
-                android:elevation="2dp"
-                android:entries="@array/tipos_denuncia"/>
+                android:elevation="2dp" />
 
             <!-- DESCRIÇÃO -->
             <TextView
@@ -189,17 +211,31 @@
                     android:layout_marginTop="18dp"
                     android:orientation="horizontal">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonLocalAtual"
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="📍 Minha localização"
-                        android:textAllCaps="false"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12sp"
-                        app:backgroundTint="#1A3A5C"
-                        app:cornerRadius="14dp" />
+                        android:layout_weight="1">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonLocalAtual"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:text="📍 Minha localização"
+                            android:textAllCaps="false"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            app:backgroundTint="#1A3A5C"
+                            app:cornerRadius="14dp" />
+
+                        <ProgressBar
+                            android:id="@+id/progressLocalizacao"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="center"
+                            android:visibility="gone"
+                            android:indeterminateTint="#FFFFFF" />
+
+                    </FrameLayout>
 
                     <Space
                         android:layout_width="10dp"
@@ -337,16 +373,30 @@
         android:paddingStart="20dp"
         android:paddingEnd="20dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/enviarDenuncia"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="🚀 Enviar denúncia"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            app:backgroundTint="#1A3A5C"
-            app:cornerRadius="14dp" />
+            android:layout_height="52dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/enviarDenuncia"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="🚀 Enviar denúncia"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:backgroundTint="#1A3A5C"
+                app:cornerRadius="14dp" />
+
+            <ProgressBar
+                android:id="@+id/progressEnviar"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                android:indeterminateTint="#FFFFFF" />
+
+        </FrameLayout>
 
     </LinearLayout>
 
